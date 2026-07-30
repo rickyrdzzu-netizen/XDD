@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Tienda Tigres UANL</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .producto { border: 1px solid #ccc; padding: 20px; width: 650px; }
+    .producto img.principal { width: 450px; }
+    .boton { background: gold; padding: 10px; border: none; cursor: pointer; font-weight: bold; }
+    .ticket { border: 2px dashed #333; padding: 15px; margin-top: 20px; }
+    .complemento { margin-top: 20px; font-size: 0.85em; }
+    .complemento img { width: 100px; }
+    #mapa { margin-top: 20px; height: 350px; }
+  </style>
+</head>
+<body>
+
+<div class="producto">
+  <h2>Playera Tigres UANL Temporada 2024–2025</h2>
+  <img class="principal" src="https://tiendasuchiate.com/wp-content/uploads/2024/08/8a72ee39-scaled.jpeg" alt="Playera Tigres UANL nueva">
+  
+  <p><strong>Precio base:</strong> según variante</p>
+  
+  <!-- Variantes de tamaño con precios -->
+  <label for="tamaño">Selecciona tamaño:</label>
+  <select id="tamaño" onchange="calcularTotal()">
+    <option value="999">Chico — $999 MXN</option>
+    <option value="1099">Mediano — $1099 MXN</option>
+    <option value="1499">Grande — $1499 MXN</option>
+  </select><br><br>
+  
+  <!-- Cantidad -->
+  <label for="cantidad">Cantidad:</label>
+  <input type="number" id="cantidad" value="1" min="1" onchange="calcularTotal()"><br><br>
+  
+  <!-- Complemento sugerido -->
+  <div class="complemento">
+    <label><input type="checkbox" id="complemento" onchange="calcularTotal()"> Agregar Gorra Tigres UANL — $399 MXN</label><br>
+    <img src="https://www.innovasport.com/medias/IS-13742023-1.jpg?context=bWFzdGVyfGltYWdlc3wxMDY5NTl8aW1hZ2UvanBlZ3xhVzFoWjJWekwyaGtOaTlvWXpFdk1URTVNREU1TmpZek9EVXhPREl1YW5CbnxjODQzNWNmMTkwY2Q0MThlYWVkNWZhODcyZDJlOGUzNGVhYmZmOWFiYjkzMjNlOGI0NWI1ZDAwYmQ2NDMzYWEw" alt="Gorra Tigres UANL">
+  </div>
+  
+  <!-- Total dinámico -->
+  <p id="total"><strong>Total: $0 MXN</strong></p>
+  
+  <!-- Botón de compra -->
+  <button class="boton" onclick="mostrarFormulario()">Comprar</button>
+</div>
+
+<!-- Formulario de compra -->
+<div id="formulario" style="display:none; margin-top:20px;">
+  <h3>Formulario de compra</h3>
+  <form onsubmit="emitirTicket(); return false;">
+    <label>Nombre:</label><br>
+    <input type="text" id="nombreCliente" placeholder="Tu nombre" required><br><br>
+    
+    <label>Dirección de envío:</label><br>
+    <input type="text" id="direccionEnvio" placeholder="Ejemplo: Monterrey, Nuevo León" required><br><br>
+    
+    <label>Tarjeta de crédito/débito:</label><br>
+    <input type="text" placeholder="1111-2222-3333-4444" required><br><br>
+    
+    <button type="submit" class="boton">Confirmar compra</button>
+  </form>
+</div>
+
+<!-- Ticket -->
+<div id="ticket" class="ticket" style="display:none;">
+  <h3>Recibo de compra</h3>
+  <p id="detalle"></p>
+  <hr>
+  <p><strong>Empresa:</strong> Coleccionables del deporte SA de CV</p>
+  <p><strong>Dirección de la empresa:</strong> Calle Ficticia #123, García, Nuevo León</p>
+  
+  <!-- Mapa interactivo -->
+  <div id="mapa"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+
+<script>
+// Variable global para evitar duplicar/reinicializar el mapa en múltiples clics
+let mapa = null;
+
+function calcularTotal() {
+  let precioBase = parseFloat(document.getElementById("tamaño").value);
+  let cantidad = parseInt(document.getElementById("cantidad").value) || 1;
+  let complemento = document.getElementById("complemento").checked ? 399 : 0;
+
+  // Aplicar 5% de descuento a las playeras si la cantidad es >= 20
+  if (cantidad >= 20) {
+    precioBase = precioBase * 0.95;
+  }
+
+  // Desglose correcto:
+  // Subtotal = (Precio Unitario Descontado * Cantidad) + Complemento
+  let subtotalProductos = (precioBase * cantidad) + complemento;
+  let envio = 150;
+  let baseImponible = subtotalProductos + envio;
+  
+  let iva = baseImponible * 0.16;
+  let total = baseImponible + iva;
+
+  document.getElementById("total").innerHTML = "<strong>Total: $" + total.toFixed(2) + " MXN</strong>";
+  return { precioBase, cantidad, complemento, envio, subtotalProductos, iva, total };
+}
+
+function mostrarFormulario() {
+  document.getElementById("formulario").style.display = "block";
+  calcularTotal();
+}
+
+function emitirTicket() {
+  let datos = calcularTotal();
+  let nombre = document.getElementById("nombreCliente").value;
+  let direccion = document.getElementById("direccionEnvio").value;
+
+  let detalle = `
+    Cliente: ${nombre}<br>
+    Dirección de envío: ${direccion}<br><br>
+    Producto: Playera Tigres UANL 2024–2025<br>
+    Precio unitario: $${datos.precioBase.toFixed(2)} MXN<br>
+    Cantidad: ${datos.cantidad}<br>
+    Complemento: ${datos.complemento > 0 ? "Gorra Tigres $399 MXN" : "Ninguno"}<br>
+    Envío fijo: $${datos.envio.toFixed(2)} MXN<br>
+    IVA (16%): $${datos.iva.toFixed(2)} MXN<br>
+    <strong>Total: $${datos.total.toFixed(2)} MXN</strong>
+  `;
+  document.getElementById("detalle").innerHTML = detalle;
+  document.getElementById("ticket").style.display = "block";
+
+  // Reiniciar el contenedor del mapa si ya existía para evitar el error "Map container is already initialized"
+  if (mapa !== null) {
+    mapa.remove();
+  }
+
+  // Inicializar mapa
+  mapa = L.map('mapa').setView([25.813, -100.597], 10); // García, NL
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(mapa);
+
+  // Geocodificación con Nominatim
+  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion)}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data && data.length > 0) {
+        let lat = parseFloat(data[0].lat);
+        let lon = parseFloat(data[0].lon);
+
+        L.Routing.control({
+          waypoints: [
+            L.latLng(25.813, -100.597), // García, NL
+            L.latLng(lat, lon)
+          ],
+          routeWhileDragging: true
+        }).addTo(mapa);
+
+        L.marker([25.813, -100.597]).addTo(mapa).bindPopup("Producto en García, NL").openPopup();
+        L.marker([lat, lon]).addTo(mapa).bindPopup("Dirección de entrega").openPopup();
+      } else {
+        alert("No se pudo localizar la dirección ingresada.");
+      }
+    });
+}
+
+// Ejecutar al cargar la página para inicializar el total
+window.onload = calcularTotal;
+</script>
+
+</body>
+</html>
